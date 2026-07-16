@@ -2,25 +2,113 @@
 <html>
 <head>
   <title>Mehedi Joypurhat Live TV</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
   <style>
-    body {margin:0;background:#111;color:#fff;font-family:Arial;}
-    header {background:red;padding:10px;text-align:center;font-size:20px;}
-    input {width:95%;margin:10px;padding:8px;border-radius:5px;border:none;}
-    video {width:100%;height:220px;background:black;}
-    .grid {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px;}
-    .ch {background:#222;padding:10px;text-align:center;border-radius:8px;cursor:pointer;}
-    .ch:hover {background:red;}
+    body {
+      margin:0;
+      background:#111;
+      color:#fff;
+      font-family:Arial;
+      overflow-x:hidden;
+    }
+
+    header {
+      background:red;
+      padding:10px;
+      text-align:center;
+      font-size:18px;
+    }
+
+    input {
+      width:95%;
+      margin:10px;
+      padding:8px;
+      border-radius:5px;
+      border:none;
+    }
+
+    video {
+      width:100%;
+      height:220px;
+      background:black;
+      outline:none;
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      padding:10px;
+    }
+
+    .ch {
+      background:#222;
+      padding:10px;
+      text-align:center;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .ch img {
+      width:40px;
+      height:40px;
+      display:block;
+      margin:auto;
+    }
+
+    .ch:hover {
+      background:red;
+    }
+
+    .controls {
+      text-align:center;
+      margin:10px;
+    }
+
+    button,select {
+      margin:5px;
+      padding:8px;
+      border:none;
+      border-radius:5px;
+      background:red;
+      color:#fff;
+    }
+
+    /* FULLSCREEN FIX */
+    video:fullscreen {
+      width:100%;
+      height:100%;
+    }
+
   </style>
 </head>
 
 <body>
 
-<header>📺 Mehedi Joypurhat Live TV</header>
+<header id="title">📺 Mehedi Joypurhat Live TV</header>
 
 <input type="text" id="search" placeholder="Search channel...">
 
-<video id="video" controls></video>
+<video id="video" controls playsinline webkit-playsinline></video>
+
+<div class="controls">
+  <button onclick="prevChannel()">⏮️</button>
+  <button onclick="nextChannel()">⏭️</button>
+  <button onclick="goFull()">📺 Full</button>
+  <button onclick="pipMode()">🖼️ PiP</button>
+
+  <select onchange="changeQuality(this.value)">
+    <option value="-1">Auto</option>
+    <option value="0">Low</option>
+    <option value="1">Medium</option>
+    <option value="2">High</option>
+  </select>
+
+  <button onclick="filterCategory('News')">News</button>
+  <button onclick="filterCategory('Sports')">Sports</button>
+  <button onclick="filterCategory('All')">All</button>
+</div>
 
 <div class="grid" id="channels"></div>
 
@@ -28,53 +116,139 @@
 
 <script>
 let channels = [];
+let currentIndex = 0;
+let hls;
 
+// LOAD M3U
 fetch('মাধবী.m3u')
 .then(res => res.text())
 .then(data => {
+
   let lines = data.split('\n');
 
   for (let i=0;i<lines.length;i++){
     if(lines[i].includes('#EXTINF')){
+
       let name = lines[i].split(',')[1];
       let url = lines[i+1];
-      channels.push({name,url});
+
+      let logo = "";
+      let group = "Other";
+
+      if(lines[i].includes('tvg-logo')){
+        logo = lines[i].split('tvg-logo="')[1]?.split('"')[0];
+      }
+
+      if(lines[i].includes('group-title')){
+        group = lines[i].split('group-title="')[1]?.split('"')[0];
+      }
+
+      channels.push({name,url,logo,group});
     }
   }
 
   showChannels(channels);
 });
 
+// SHOW CHANNELS
 function showChannels(list){
   let box = document.getElementById("channels");
   box.innerHTML = "";
 
-  list.forEach(ch=>{
+  list.forEach((ch,index)=>{
     let div = document.createElement("div");
     div.className = "ch";
-    div.innerText = ch.name;
-    div.onclick = ()=> play(ch.url);
+
+    div.innerHTML = `
+      <img src="${ch.logo || ''}">
+      <div>${ch.name}</div>
+    `;
+
+    div.onclick = ()=> play(ch.url,index);
     box.appendChild(div);
   });
 }
 
-function play(url){
+// PLAY VIDEO
+function play(url,index){
+  currentIndex = index;
+
   let video = document.getElementById("video");
+  document.getElementById("title").innerText = "📺 " + channels[index].name;
+
+  if(hls){
+    hls.destroy();
+  }
 
   if(Hls.isSupported()){
-    let hls = new Hls();
+    hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(video);
   }else{
     video.src = url;
   }
+
+  video.play();
 }
 
+// NEXT / PREV
+function nextChannel(){
+  currentIndex = (currentIndex + 1) % channels.length;
+  play(channels[currentIndex].url,currentIndex);
+}
+
+function prevChannel(){
+  currentIndex = (currentIndex - 1 + channels.length) % channels.length;
+  play(channels[currentIndex].url,currentIndex);
+}
+
+// FULLSCREEN FIX (Mobile Compatible)
+function goFull(){
+  let video = document.getElementById("video");
+
+  if(video.requestFullscreen){
+    video.requestFullscreen();
+  } else if(video.webkitEnterFullscreen){
+    video.webkitEnterFullscreen(); // iPhone fix
+  }
+}
+
+// PiP
+async function pipMode(){
+  let video = document.getElementById("video");
+
+  if(document.pictureInPictureElement){
+    await document.exitPictureInPicture();
+  }else{
+    await video.requestPictureInPicture();
+  }
+}
+
+// QUALITY
+function changeQuality(level){
+  if(hls){
+    hls.currentLevel = parseInt(level);
+  }
+}
+
+// SEARCH
 document.getElementById("search").oninput = function(){
   let value = this.value.toLowerCase();
   let filtered = channels.filter(c=>c.name.toLowerCase().includes(value));
   showChannels(filtered);
 }
+
+// CATEGORY
+function filterCategory(cat){
+  if(cat==="All"){
+    showChannels(channels);
+  }else{
+    let filtered = channels.filter(c=>c.group.includes(cat));
+    showChannels(filtered);
+  }
+}
+
+/* ❌ SWIPE COMPLETELY DISABLED */
 </script>
 
 </body>
