@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MehEdi JOYPURHAT LIVE TV</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MehEdi JOYPURHAT LIVE TV</title>
 
 <style>
 body{
@@ -12,7 +12,7 @@ body{
   background:url('https://images.unsplash.com/photo-1503264116251-35a269479413') no-repeat center/cover;
 }
 
-/* Glass Effect */
+/* Glass */
 .glass{
   background:rgba(255,255,255,0.08);
   backdrop-filter:blur(12px);
@@ -20,18 +20,19 @@ body{
   border-radius:15px;
 }
 
-/* Top Right User */
-#userCount{
+/* Clock Left */
+#bdClockBox{
   position:absolute;
-  right:10px;
-  top:5px;
+  top:10px;
+  left:10px;
   font-size:12px;
+  line-height:1.3;
   color:#00ffcc;
 }
 
-/* Top Left Clock */
-.topbar{
-  padding:10px;
+#bdDate{
+  font-size:11px;
+  opacity:0.8;
 }
 
 /* Title */
@@ -39,6 +40,7 @@ body{
   text-align:center;
   font-size:22px;
   font-weight:bold;
+  margin-top:10px;
 }
 
 #channelName{
@@ -47,10 +49,12 @@ body{
   opacity:0.8;
 }
 
-/* Player */
+/* Sticky Player */
 .video-container{
-  margin:10px;
-  position:relative;
+  position:sticky;
+  top:0;
+  z-index:999;
+  padding:10px;
 }
 
 video{
@@ -58,29 +62,44 @@ video{
   border-radius:15px;
 }
 
-/* Brightness */
-#brightnessOverlay{
+/* Overlay Play */
+#playOverlay{
   position:absolute;
   top:0;left:0;
   width:100%;height:100%;
-  background:#000;
-  opacity:0;
-  pointer-events:none;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:50px;
+  background:rgba(0,0,0,0.4);
   border-radius:15px;
+  transition:0.3s;
 }
 
-/* Volume UI */
-#volumeUI{
-  position:absolute;
-  right:10px;
-  top:50%;
-  background:rgba(0,0,0,0.6);
-  padding:5px;
+/* Controls */
+.controls{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:5px;
+}
+
+.btn{
+  padding:8px 12px;
   border-radius:10px;
-  display:none;
+  background:rgba(0,0,0,0.5);
 }
 
-/* Channel Grid */
+/* Search */
+#search{
+  width:90%;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+}
+
+/* Grid */
 .grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
@@ -92,57 +111,63 @@ video{
   padding:10px;
   text-align:center;
   border-radius:15px;
+  position:relative;
 }
 
-/* Fav button */
-.favBtn{
-  margin-top:5px;
-  font-size:12px;
-  background:#ffcc00;
-  color:#000;
-  padding:3px;
-  border-radius:8px;
+.logo{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+}
+
+/* Fav */
+.fav{
+  position:absolute;
+  top:5px;
+  right:8px;
+  font-size:18px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="userCount">👥 Online: 1</div>
-
-<div class="topbar glass">
-  <div id="clock"></div>
-  <div id="banglaDate"></div>
+<!-- Clock -->
+<div id="bdClockBox">
+  <div id="bdTime"></div>
+  <div id="bdDate"></div>
 </div>
 
 <div class="mainTitle">MehEdi LIVE TV</div>
-<div id="channelName">No Channel Selected</div>
+<div id="channelName">Select Channel</div>
 
 <div class="video-container">
-  <video id="video" controls></video>
-  <div id="brightnessOverlay"></div>
-  <div id="volumeUI">🔊</div>
+  <video id="video"></video>
+  <div id="playOverlay">▶</div>
+
+  <div class="controls">
+    <div class="btn" onclick="prevChannel()">⏮</div>
+    <div class="btn" onclick="nextChannel()">⏭</div>
+    <div class="btn" onclick="togglePIP()">📺 PiP</div>
+  </div>
 </div>
 
-<!-- ⭐ Favourite Section -->
-<h3 style="padding-left:10px;">⭐ Favourite Channels</h3>
-<div class="grid" id="favChannels"></div>
+<input type="text" id="search" placeholder="Search channel...">
 
-<!-- All Channels -->
 <div class="grid" id="channels"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
 
-// বাংলা ক্যালেন্ডার
-const banglaMonths=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
+// 🔥 Bangladesh Clock + Bangla Date
+const bdMonths=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
 
-function toBanglaNum(num){
-  return num.toString().replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
+function toBN(n){
+  return n.toString().replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
 }
 
-function getBanglaDate(date){
+function getBDDate(date){
   const y=date.getFullYear();
   const m=date.getMonth()+1;
   const d=date.getDate();
@@ -158,30 +183,32 @@ function getBanglaDate(date){
     bd=d+(30-map[m-1]);
   }
 
-  return `${toBanglaNum(bd)} ${banglaMonths[bm]} ${toBanglaNum(by)}`;
+  return `${toBN(bd)} ${bdMonths[bm]} ${toBN(by)}`;
 }
 
-// Clock
-setInterval(()=>{
+function updateBDClock(){
   let now=new Date();
 
-  document.getElementById("clock").innerHTML =
-    now.toLocaleTimeString("en-GB",{timeZone:"Asia/Dhaka"})+"<br>"+
-    now.toLocaleDateString("en-GB",{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let time=now.toLocaleTimeString("en-GB",{
+    timeZone:"Asia/Dhaka",
+    hour12:false
+  });
 
-  document.getElementById("banglaDate").innerText =
-    getBanglaDate(now);
-},1000);
+  let day=now.toLocaleDateString("en-GB",{
+    weekday:"long",
+    timeZone:"Asia/Dhaka"
+  });
 
-// Fake users
-setInterval(()=>{
-  let n=Math.floor(Math.random()*50)+1;
-  document.getElementById("userCount").innerText="👥 Online: "+n;
-},3000);
+  document.getElementById("bdTime").innerText = time + " ("+day+")";
+  document.getElementById("bdDate").innerText = getBDDate(now);
+}
 
-// Channels
+setInterval(updateBDClock,1000);
+updateBDClock();
+
+
+// Channel System
 let channels=[];
-let favourites = JSON.parse(localStorage.getItem("favChannels") || "[]");
 let currentIndex=0;
 let hls;
 
@@ -197,10 +224,8 @@ fetch('মাধবী.m3u')
     }
   }
   showChannels(channels);
-  showFav();
 });
 
-// Show Channels
 function showChannels(list){
   let box=document.getElementById("channels");
   box.innerHTML="";
@@ -209,48 +234,26 @@ function showChannels(list){
     let d=document.createElement("div");
     d.className="ch glass";
 
-    d.innerHTML = `
-      ${ch.name}
-      <div class="favBtn" onclick="event.stopPropagation();toggleFav('${ch.name}','${ch.url}')">
-        ⭐ Fav
-      </div>
+    let favs=JSON.parse(localStorage.getItem("fav")||"[]");
+    let isFav=favs.includes(ch.name);
+
+    d.innerHTML=`
+      <img class="logo" src="https://logo.clearbit.com/${ch.name.replace(/ /g,'')}.com">
+      <br>${ch.name}
+      <div class="fav">${isFav?"❤️":"🤍"}</div>
     `;
 
     d.onclick=()=>play(ch.url,i);
+
+    d.querySelector(".fav").onclick=(e)=>{
+      e.stopPropagation();
+      toggleFav(ch.name);
+    };
+
     box.appendChild(d);
   });
 }
 
-// Favourite toggle
-function toggleFav(name,url){
-  let index=favourites.findIndex(f=>f.url===url);
-
-  if(index>-1){
-    favourites.splice(index,1);
-  }else{
-    favourites.push({name,url});
-  }
-
-  localStorage.setItem("favChannels",JSON.stringify(favourites));
-  showFav();
-}
-
-// Show Favourite
-function showFav(){
-  let box=document.getElementById("favChannels");
-  box.innerHTML="";
-
-  favourites.forEach((ch,i)=>{
-    let d=document.createElement("div");
-    d.className="ch glass";
-    d.innerText=ch.name;
-
-    d.onclick=()=>play(ch.url,i);
-    box.appendChild(d);
-  });
-}
-
-// Play
 function play(url,i){
   currentIndex=i;
   let v=document.getElementById("video");
@@ -266,58 +269,17 @@ function play(url,i){
   }else{
     v.src=url;
   }
+
   v.play();
+  document.getElementById("playOverlay").style.display="none";
 }
 
-// Gesture
-let startX=0,startY=0;
-let isLeft=false,isRight=false;
+document.getElementById("playOverlay").onclick=()=>{
+  let v=document.getElementById("video");
+  v.play();
+  document.getElementById("playOverlay").style.display="none";
+};
 
-const videoBox=document.querySelector(".video-container");
-const video=document.getElementById("video");
-
-videoBox.addEventListener("touchstart",(e)=>{
-  startX=e.touches[0].clientX;
-  startY=e.touches[0].clientY;
-
-  let w=window.innerWidth;
-  isLeft=startX<w/2;
-  isRight=startX>w/2;
-});
-
-videoBox.addEventListener("touchmove",(e)=>{
-  let y=e.touches[0].clientY;
-  let diffY=startY-y;
-
-  // Volume
-  if(isRight){
-    video.volume=Math.max(0,Math.min(1,video.volume+diffY/300));
-    document.getElementById("volumeUI").style.display="block";
-    document.getElementById("volumeUI").innerText="🔊 "+Math.round(video.volume*100);
-  }
-
-  // Brightness
-  if(isLeft){
-    let o=document.getElementById("brightnessOverlay");
-    let b=parseFloat(o.style.opacity||0)+diffY/300;
-    o.style.opacity=Math.max(0,Math.min(0.7,b));
-  }
-
-  startY=y;
-});
-
-videoBox.addEventListener("touchend",(e)=>{
-  let endX=e.changedTouches[0].clientX;
-  let diffX=startX-endX;
-
-  if(Math.abs(diffX)>80){
-    diffX>0?nextChannel():prevChannel();
-  }
-
-  document.getElementById("volumeUI").style.display="none";
-});
-
-// Next / Prev
 function nextChannel(){
   currentIndex=(currentIndex+1)%channels.length;
   play(channels[currentIndex].url,currentIndex);
@@ -326,6 +288,38 @@ function nextChannel(){
 function prevChannel(){
   currentIndex=(currentIndex-1+channels.length)%channels.length;
   play(channels[currentIndex].url,currentIndex);
+}
+
+// Search
+document.getElementById("search").addEventListener("input",(e)=>{
+  let val=e.target.value.toLowerCase();
+  let filtered=channels.filter(c=>c.name.toLowerCase().includes(val));
+  showChannels(filtered);
+});
+
+// Favourite
+function toggleFav(name){
+  let favs=JSON.parse(localStorage.getItem("fav")||"[]");
+
+  if(favs.includes(name)){
+    favs=favs.filter(f=>f!==name);
+  }else{
+    favs.push(name);
+  }
+
+  localStorage.setItem("fav",JSON.stringify(favs));
+  showChannels(channels);
+}
+
+// PiP
+async function togglePIP(){
+  let video=document.getElementById("video");
+
+  if(document.pictureInPictureElement){
+    document.exitPictureInPicture();
+  }else{
+    await video.requestPictureInPicture();
+  }
 }
 
 </script>
