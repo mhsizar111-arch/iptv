@@ -20,7 +20,7 @@ body{
   border-radius:15px;
 }
 
-/* Clock Left */
+/* Clock */
 #bdClockBox{
   position:absolute;
   top:10px;
@@ -49,7 +49,7 @@ body{
   opacity:0.8;
 }
 
-/* Sticky Player */
+/* Player */
 .video-container{
   position:sticky;
   top:0;
@@ -62,7 +62,6 @@ video{
   border-radius:15px;
 }
 
-/* Overlay Play */
 #playOverlay{
   position:absolute;
   top:0;left:0;
@@ -73,7 +72,6 @@ video{
   font-size:50px;
   background:rgba(0,0,0,0.4);
   border-radius:15px;
-  transition:0.3s;
 }
 
 /* Controls */
@@ -82,12 +80,17 @@ video{
   justify-content:center;
   gap:10px;
   margin-top:5px;
+  flex-wrap:wrap;
 }
 
 .btn{
   padding:8px 12px;
   border-radius:10px;
   background:rgba(0,0,0,0.5);
+}
+
+#volume{
+  width:80px;
 }
 
 /* Search */
@@ -120,7 +123,6 @@ video{
   border-radius:50%;
 }
 
-/* Fav */
 .fav{
   position:absolute;
   top:5px;
@@ -132,7 +134,6 @@ video{
 
 <body>
 
-<!-- Clock -->
 <div id="bdClockBox">
   <div id="bdTime"></div>
   <div id="bdDate"></div>
@@ -149,18 +150,21 @@ video{
     <div class="btn" onclick="prevChannel()">⏮</div>
     <div class="btn" onclick="nextChannel()">⏭</div>
     <div class="btn" onclick="togglePIP()">📺 PiP</div>
+    <div class="btn" onclick="toggleMute()">🔇</div>
+    <input type="range" id="volume" min="0" max="1" step="0.1">
+    <div class="btn" onclick="fullScreen()">⛶</div>
+    <div class="btn" onclick="takeShot()">📸</div>
   </div>
 </div>
 
 <input type="text" id="search" placeholder="Search channel...">
-
 <div class="grid" id="channels"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
 
-// 🔥 Bangladesh Clock + Bangla Date
+// 🔥 Clock (AM/PM)
 const bdMonths=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
 
 function toBN(n){
@@ -189,9 +193,12 @@ function getBDDate(date){
 function updateBDClock(){
   let now=new Date();
 
-  let time=now.toLocaleTimeString("en-GB",{
+  let time=now.toLocaleTimeString("en-US",{
     timeZone:"Asia/Dhaka",
-    hour12:false
+    hour12:true,
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit"
   });
 
   let day=now.toLocaleDateString("en-GB",{
@@ -206,8 +213,7 @@ function updateBDClock(){
 setInterval(updateBDClock,1000);
 updateBDClock();
 
-
-// Channel System
+// Channels
 let channels=[];
 let currentIndex=0;
 let hls;
@@ -309,6 +315,41 @@ function toggleFav(name){
 
   localStorage.setItem("fav",JSON.stringify(favs));
   showChannels(channels);
+}
+
+// Volume
+document.getElementById("volume").oninput=function(){
+  document.getElementById("video").volume=this.value;
+};
+
+// Mute
+function toggleMute(){
+  let v=document.getElementById("video");
+  v.muted=!v.muted;
+}
+
+// Fullscreen
+function fullScreen(){
+  let v=document.getElementById("video");
+  if(v.requestFullscreen){
+    v.requestFullscreen();
+  }
+}
+
+// Screenshot
+function takeShot(){
+  let video=document.getElementById("video");
+  let canvas=document.createElement("canvas");
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+
+  let ctx=canvas.getContext("2d");
+  ctx.drawImage(video,0,0);
+
+  let a=document.createElement("a");
+  a.href=canvas.toDataURL("image/png");
+  a.download="screenshot.png";
+  a.click();
 }
 
 // PiP
