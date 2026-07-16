@@ -1,113 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mehedi Joypurhat Live TV</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>MehEdi LIVE TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    body {
-      margin:0;
-      background:#111;
-      color:#fff;
-      font-family:Arial;
-      overflow-x:hidden;
-    }
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  color:#fff;
+  background:#000;
+}
 
-    header {
-      background:red;
-      padding:10px;
-      text-align:center;
-      font-size:18px;
-    }
+#userCount{
+  position:absolute;
+  right:10px;
+  top:5px;
+  font-size:12px;
+  color:#00ff99;
+}
 
-    input {
-      width:95%;
-      margin:10px;
-      padding:8px;
-      border-radius:5px;
-      border:none;
-    }
+.topbar{
+  padding:10px;
+}
 
-    video {
-      width:100%;
-      height:220px;
-      background:black;
-      outline:none;
-    }
+#clock{font-size:12px;}
+#banglaDate{font-size:11px;opacity:0.8;}
 
-    .grid {
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:10px;
-      padding:10px;
-    }
+h2{text-align:center;color:#00ffcc;}
 
-    .ch {
-      background:#222;
-      padding:10px;
-      text-align:center;
-      border-radius:8px;
-      cursor:pointer;
-    }
+.video-container{position:relative;}
 
-    .ch img {
-      width:40px;
-      height:40px;
-      display:block;
-      margin:auto;
-    }
+video{width:100%;}
 
-    .ch:hover {
-      background:red;
-    }
+#brightnessOverlay{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:#000;
+  opacity:0;
+  pointer-events:none;
+}
 
-    .controls {
-      text-align:center;
-      margin:10px;
-    }
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  padding:10px;
+}
 
-    button,select {
-      margin:5px;
-      padding:8px;
-      border:none;
-      border-radius:5px;
-      background:red;
-      color:#fff;
-    }
-
-    /* FULLSCREEN FIX */
-    video:fullscreen {
-      width:100%;
-      height:100%;
-    }
-
-  </style>
+.ch{
+  background:#111;
+  padding:10px;
+  border-radius:10px;
+  text-align:center;
+}
+</style>
 </head>
 
 <body>
 
-<header id="title">📺 Mehedi Joypurhat Live TV</header>
+<div id="userCount">👥 Online: 1</div>
 
-<input type="text" id="search" placeholder="Search channel...">
+<div class="topbar">
+  <div id="clock"></div>
+  <div id="banglaDate"></div>
+</div>
 
-<video id="video" controls playsinline webkit-playsinline></video>
+<h2 id="title">MehEdi JOYPURHAT LiVe TV</h2>
 
-<div class="controls">
-  <button onclick="prevChannel()">⏮️</button>
-  <button onclick="nextChannel()">⏭️</button>
-  <button onclick="goFull()">📺 Full</button>
-  <button onclick="pipMode()">🖼️ PiP</button>
-
-  <select onchange="changeQuality(this.value)">
-    <option value="-1">Auto</option>
-    <option value="0">Low</option>
-    <option value="1">Medium</option>
-    <option value="2">High</option>
-  </select>
-
-  <button onclick="filterCategory('News')">News</button>
-  <button onclick="filterCategory('Sports')">Sports</button>
-  <button onclick="filterCategory('All')">All</button>
+<div class="video-container" id="videoBox">
+  <video id="video" controls></video>
+  <div id="brightnessOverlay"></div>
 </div>
 
 <div class="grid" id="channels"></div>
@@ -115,140 +79,162 @@
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
-let channels = [];
-let currentIndex = 0;
-let hls;
 
-// LOAD M3U
-fetch('মাধবী.m3u')
-.then(res => res.text())
-.then(data => {
+// ===== বাংলা ক্যালেন্ডার =====
+const banglaMonths=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
 
-  let lines = data.split('\n');
+function toBanglaNum(num){
+  return num.toString().replace(/\d/g,d=>"০১২৩৪৫৬৭৮৯"[d]);
+}
 
-  for (let i=0;i<lines.length;i++){
-    if(lines[i].includes('#EXTINF')){
+function getBanglaDate(date){
+  const y=date.getFullYear();
+  const m=date.getMonth()+1;
+  const d=date.getDate();
 
-      let name = lines[i].split(',')[1];
-      let url = lines[i+1];
+  const by=y-593;
+  const map=[14,14,15,16,16,16,15,15,15,15,14,14];
 
-      let logo = "";
-      let group = "Other";
+  let bm=(m+8)%12;
+  let bd=d-map[m-1];
 
-      if(lines[i].includes('tvg-logo')){
-        logo = lines[i].split('tvg-logo="')[1]?.split('"')[0];
-      }
-
-      if(lines[i].includes('group-title')){
-        group = lines[i].split('group-title="')[1]?.split('"')[0];
-      }
-
-      channels.push({name,url,logo,group});
-    }
+  if(bd<=0){
+    bm=(bm-1+12)%12;
+    bd=d+(30-map[m-1]);
   }
 
+  return `${toBanglaNum(bd)} ${banglaMonths[bm]} ${toBanglaNum(by)}`;
+}
+
+// ===== CLOCK =====
+function updateClock(){
+  let now=new Date();
+
+  document.getElementById("clock").innerHTML =
+    now.toLocaleTimeString("en-GB",{timeZone:"Asia/Dhaka"})+"<br>"+
+    now.toLocaleDateString("en-GB",{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  document.getElementById("banglaDate").innerText =
+    getBanglaDate(now);
+}
+setInterval(updateClock,1000);
+
+// ===== USER COUNT =====
+setInterval(()=>{
+  let n=Math.floor(Math.random()*50)+1;
+  document.getElementById("userCount").innerText="👥 Online: "+n;
+},3000);
+
+// ===== CHANNEL SYSTEM =====
+let channels=[];
+let currentIndex=0;
+let hls;
+
+fetch('মাধবী.m3u')
+.then(r=>r.text())
+.then(data=>{
+  let lines=data.split('\n');
+  for(let i=0;i<lines.length;i++){
+    if(lines[i].includes('#EXTINF')){
+      let name=lines[i].split(',')[1];
+      let url=lines[i+1];
+      channels.push({name,url});
+    }
+  }
   showChannels(channels);
 });
 
-// SHOW CHANNELS
 function showChannels(list){
-  let box = document.getElementById("channels");
-  box.innerHTML = "";
-
-  list.forEach((ch,index)=>{
-    let div = document.createElement("div");
-    div.className = "ch";
-
-    div.innerHTML = `
-      <img src="${ch.logo || ''}">
-      <div>${ch.name}</div>
-    `;
-
-    div.onclick = ()=> play(ch.url,index);
-    box.appendChild(div);
+  let box=document.getElementById("channels");
+  box.innerHTML="";
+  list.forEach((ch,i)=>{
+    let d=document.createElement("div");
+    d.className="ch";
+    d.innerText=ch.name;
+    d.onclick=()=>play(ch.url,i);
+    box.appendChild(d);
   });
 }
 
-// PLAY VIDEO
-function play(url,index){
-  currentIndex = index;
+function play(url,i){
+  currentIndex=i;
+  let v=document.getElementById("video");
+  document.getElementById("title").innerText=channels[i].name;
 
-  let video = document.getElementById("video");
-  document.getElementById("title").innerText = "📺 " + channels[index].name;
-
-  if(hls){
-    hls.destroy();
-  }
+  if(hls)hls.destroy();
 
   if(Hls.isSupported()){
-    hls = new Hls();
+    hls=new Hls();
     hls.loadSource(url);
-    hls.attachMedia(video);
+    hls.attachMedia(v);
   }else{
-    video.src = url;
+    v.src=url;
   }
-
-  video.play();
+  v.play();
 }
 
-// NEXT / PREV
+// ===== MX PLAYER GESTURE =====
+let startX=0,startY=0;
+let isLeft=false,isRight=false;
+
+const videoBox=document.getElementById("videoBox");
+const video=document.getElementById("video");
+
+videoBox.addEventListener("touchstart",(e)=>{
+  startX=e.touches[0].clientX;
+  startY=e.touches[0].clientY;
+
+  let w=window.innerWidth;
+  isLeft=startX<w/2;
+  isRight=startX>w/2;
+});
+
+videoBox.addEventListener("touchmove",(e)=>{
+  let x=e.touches[0].clientX;
+  let y=e.touches[0].clientY;
+
+  let diffY=startY-y;
+  let diffX=startX-x;
+
+  // Volume
+  if(isRight && Math.abs(diffY)>Math.abs(diffX)){
+    let v=video.volume + diffY/300;
+    v=Math.max(0,Math.min(1,v));
+    video.volume=v;
+    startY=y;
+  }
+
+  // Brightness
+  if(isLeft && Math.abs(diffY)>Math.abs(diffX)){
+    let o=document.getElementById("brightnessOverlay");
+    let cur=parseFloat(o.style.opacity||0);
+    let b=cur + diffY/300;
+    b=Math.max(0,Math.min(0.7,b));
+    o.style.opacity=b;
+    startY=y;
+  }
+});
+
+videoBox.addEventListener("touchend",(e)=>{
+  let endX=e.changedTouches[0].clientX;
+  let diffX=startX-endX;
+
+  if(Math.abs(diffX)>80){
+    if(diffX>0) nextChannel();
+    else prevChannel();
+  }
+});
+
 function nextChannel(){
-  currentIndex = (currentIndex + 1) % channels.length;
+  currentIndex=(currentIndex+1)%channels.length;
   play(channels[currentIndex].url,currentIndex);
 }
 
 function prevChannel(){
-  currentIndex = (currentIndex - 1 + channels.length) % channels.length;
+  currentIndex=(currentIndex-1+channels.length)%channels.length;
   play(channels[currentIndex].url,currentIndex);
 }
 
-// FULLSCREEN FIX (Mobile Compatible)
-function goFull(){
-  let video = document.getElementById("video");
-
-  if(video.requestFullscreen){
-    video.requestFullscreen();
-  } else if(video.webkitEnterFullscreen){
-    video.webkitEnterFullscreen(); // iPhone fix
-  }
-}
-
-// PiP
-async function pipMode(){
-  let video = document.getElementById("video");
-
-  if(document.pictureInPictureElement){
-    await document.exitPictureInPicture();
-  }else{
-    await video.requestPictureInPicture();
-  }
-}
-
-// QUALITY
-function changeQuality(level){
-  if(hls){
-    hls.currentLevel = parseInt(level);
-  }
-}
-
-// SEARCH
-document.getElementById("search").oninput = function(){
-  let value = this.value.toLowerCase();
-  let filtered = channels.filter(c=>c.name.toLowerCase().includes(value));
-  showChannels(filtered);
-}
-
-// CATEGORY
-function filterCategory(cat){
-  if(cat==="All"){
-    showChannels(channels);
-  }else{
-    let filtered = channels.filter(c=>c.group.includes(cat));
-    showChannels(filtered);
-  }
-}
-
-/* ❌ SWIPE COMPLETELY DISABLED */
 </script>
 
 </body>
