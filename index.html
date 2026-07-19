@@ -9,13 +9,13 @@ body{
   margin:0;
   font-family:Arial;
   color:#fff;
-  background:url('https://images.unsplash.com/photo-1503264116251-35a269479413') no-repeat center/cover;
+  background:url('https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg') no-repeat center/cover;
 }
 
 /* Glass */
 .glass{
   background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(15px);
   border:1px solid rgba(255,255,255,0.2);
   border-radius:15px;
 }
@@ -143,7 +143,7 @@ video{
 <div id="channelName">Select Channel</div>
 
 <div class="video-container">
-  <video id="video"></video>
+  <video id="video" controls></video>
   <div id="playOverlay">▶</div>
 
   <div class="controls">
@@ -164,7 +164,7 @@ video{
 
 <script>
 
-// 🔥 Clock (AM/PM)
+// Clock
 const bdMonths=["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
 
 function toBN(n){
@@ -175,7 +175,6 @@ function getBDDate(date){
   const y=date.getFullYear();
   const m=date.getMonth()+1;
   const d=date.getDate();
-
   const by=y-593;
   const map=[14,14,15,16,16,16,15,15,15,15,14,14];
 
@@ -218,25 +217,39 @@ let channels=[];
 let currentIndex=0;
 let hls;
 
-fetch('মাধবী.m3u')
+fetch('madhobi.m3u')
 .then(r=>r.text())
 .then(data=>{
   let lines=data.split('\n');
+
   for(let i=0;i<lines.length;i++){
     if(lines[i].includes('#EXTINF')){
+
       let name=lines[i].split(',')[1];
+
+      let logoMatch = lines[i].match(/tvg-logo="(.*?)"/);
+      let logo = logoMatch ? logoMatch[1] : "https://via.placeholder.com/40";
+
       let url=lines[i+1];
-      channels.push({name,url});
+
+      channels.push({name,url,logo});
     }
   }
+
   showChannels(channels);
+
+  // AUTO PLAY LAST CHANNEL
+  let last = localStorage.getItem("lastChannel");
+  if(last !== null && channels[last]){
+    play(channels[last].url, parseInt(last));
+  }
 });
 
 function showChannels(list){
   let box=document.getElementById("channels");
   box.innerHTML="";
 
-  list.forEach((ch,i)=>{
+  list.forEach((ch)=>{
     let d=document.createElement("div");
     d.className="ch glass";
 
@@ -244,12 +257,12 @@ function showChannels(list){
     let isFav=favs.includes(ch.name);
 
     d.innerHTML=`
-      <img class="logo" src="https://logo.clearbit.com/${ch.name.replace(/ /g,'')}.com">
+      <img class="logo" src="${ch.logo}">
       <br>${ch.name}
       <div class="fav">${isFav?"❤️":"🤍"}</div>
     `;
 
-    d.onclick=()=>play(ch.url,i);
+    d.onclick=()=>play(ch.url, channels.indexOf(ch));
 
     d.querySelector(".fav").onclick=(e)=>{
       e.stopPropagation();
@@ -262,6 +275,9 @@ function showChannels(list){
 
 function play(url,i){
   currentIndex=i;
+
+  localStorage.setItem("lastChannel", i);
+
   let v=document.getElementById("video");
 
   document.getElementById("channelName").innerText=channels[i].name;
@@ -272,6 +288,11 @@ function play(url,i){
     hls=new Hls();
     hls.loadSource(url);
     hls.attachMedia(v);
+
+    hls.on(Hls.Events.ERROR, function () {
+      alert("Channel not working!");
+    });
+
   }else{
     v.src=url;
   }
